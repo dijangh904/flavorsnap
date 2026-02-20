@@ -1,9 +1,16 @@
-import { useState } from "react";
-import Image from "next/image";
-import { useRouter } from "next/router";
+import { useRef, useState } from "react";
 
 export default function Classify() {
-  const router = useRouter();
+  const [image, setImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      setImage(imageUrl);
+    }
+  };
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -88,112 +95,34 @@ export default function Classify() {
   };
 
   return (
-    <div className="min-h-screen bg-muted flex flex-col items-center px-4 py-10">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 text-center">
-        <h1 className="text-2xl font-bold mb-4 text-primary">
-          🍲 Classify Your Dish
-        </h1>
+    <div className="min-h-screen flex flex-col items-center justify-center p-6">
+      <h2 className="text-3xl font-bold mb-6">Snap Your Food 🍛</h2>
 
-        {/* Image Preview */}
-        {preview && (
-          <div className="mb-4">
-            <Image
-              src={preview}
-              alt="Preview"
-              width={400}
-              height={250}
-              className="rounded-xl object-cover"
-            />
-          </div>
-        )}
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        ref={fileInputRef}
+        onChange={handleImageChange}
+        className="hidden"
+      />
 
-        {/* File Input */}
-        <input
-          type="file"
-          accept="image/*"
-          disabled={isUploading || isClassifying}
-          onChange={(e) => {
-            if (e.target.files?.[0]) {
-              handleFileChange(e.target.files[0]);
-            }
-          }}
-          className="mb-4 w-full text-sm"
-        />
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        className="bg-accent text-white px-6 py-3 rounded-full"
+      >
+        Open Camera
+      </button>
 
-        {/* Submit Button */}
-        <button
-          onClick={handleSubmit}
-          disabled={!selectedFile || isUploading || isClassifying}
-          className={`w-full py-3 rounded-full font-semibold flex justify-center items-center gap-2 transition ${
-            !selectedFile || isUploading || isClassifying
-              ? "bg-gray-400 cursor-not-allowed text-white"
-              : "bg-accent hover:bg-orange-600 text-white"
-          }`}
-        >
-          {isUploading ? (
-            <>
-              <Spinner />
-              Uploading....
-            </>
-          ) : isClassifying ? (
-            <>
-              <Spinner />
-              Classifying....
-            </>
-          ) : (
-            "Identify Dish"
-          )}
-        </button>
-
-        {/* Progress Bar */}
-        {(isUploading || isClassifying) && (
-          <div className="w-full bg-gray-200 rounded-full h-3 mt-4">
-            <div
-              className="bg-orange-500 h-3 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <p className="text-red-500 text-sm mt-4">{error}</p>
-        )}
-
-        {/* Skeleton Loader */}
-        {isClassifying && <Skeleton />}
-
-        {/* Result Display */}
-        {!isClassifying && result && (
-          <div className="mt-6 text-left bg-gray-50 p-4 rounded-xl shadow-inner">
-            <h2 className="text-xl font-bold mb-2">
-              {result.name || "Unknown Dish"}
-            </h2>
-            <p className="text-gray-700 text-sm mb-3">
-              {result.description || "No description available."}
-            </p>
-
-            {result.recipe && (
-              <>
-                <h3 className="font-semibold mb-1">Recipe:</h3>
-                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                  {result.recipe.map((step: string, index: number) => (
-                    <li key={index}>{step}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Back Button */}
-        <button
-          onClick={() => router.push("/")}
-          className="mt-6 text-sm text-gray-500 hover:underline"
-        >
-          ← Back to Home
-        </button>
-      </div>
+      {image && (
+        <div className="mt-6">
+          <img
+            src={image}
+            alt="Preview"
+            className="rounded-xl shadow-md max-w-sm"
+          />
+        </div>
+      )}
     </div>
   );
 }
