@@ -1,41 +1,37 @@
-# Fix #49: No Authentication/Authorization
+# Fix #51: No Health Check Endpoints
 
 ## Summary
-This PR addresses the security vulnerability "No Authentication/Authorization" (Issue #49). It implements a comprehensive security layer for the Backend API, including JWT-based authentication, API key management, and role-based access control (RBAC).
+This PR addresses the "No Health Check Endpoints" issue (Issue #51). It adds comprehensive health monitoring endpoints to the Backend API, including system resource usage, model loading status, and Kubernetes-compatible liveness/readiness probes.
 
 ## Changes Made
 
 ### ✅ Backend API
 - **Location**: `ml-model-api/app.py`
-- **Tech Stack**: `Flask-JWT-Extended`, `Flask-SQLAlchemy`, `Flask-Bcrypt`
+- **Tech Stack**: `Flask`, `psutil`
 - **Features**:
-  - **User Management**: Registration (`/register`) and Login (`/login`) endpoints.
-  - **Authentication**: JWT token generation and validation.
-  - **API Keys**: Unique API key generation for each user.
-  - **Authorization**: `@role_required` and `@api_key_or_jwt_required` decorators.
-  - **Database**: SQLite integration for user storage.
+  - **Enhanced Health Check**: `/health` now returns CPU/Memory stats and model status.
+  - **Liveness Probe**: `/health/liveness` for basic service availability.
+  - **Readiness Probe**: `/health/readiness` to check if the model is loaded and ready for inference.
 
 ### ✅ Dependencies
 - **Location**: `ml-model-api/requirements.txt`
-- **Changes**: Added `flask-jwt-extended`, `flask-sqlalchemy`, `flask-bcrypt`.
+- **Changes**: Added `psutil` for system resource monitoring.
 
 ## Technical Implementation Details
 
-### Authentication Flow
-1. **Register**: `POST /register` creates a user and returns an API Key.
-2. **Login**: `POST /login` returns a JWT access token.
-3. **Access**: Protected endpoints (e.g., `/predict`) require `Authorization: Bearer <token>` header or `X-API-KEY` header.
-
-### Security Measures
+### Endpoints
 ```python
-# Hybrid Authentication Decorator
-def api_key_or_jwt_required(fn):
-    @wraps(fn)
-    def decorator(*args, **kwargs):
-        if verify_api_key(): return fn(*args, **kwargs)
-        verify_jwt_in_request()
-        return fn(*args, **kwargs)
-    return decorator
+# General Health
+GET /health
+{
+    "status": "healthy",
+    "model_loaded": true,
+    "system": { "cpu_percent": 1.5, "memory_usage_mb": 45.2 }
+}
+
+# Probes
+GET /health/liveness  -> 200 OK
+GET /health/readiness -> 200 OK (if model loaded) / 503 (if loading)
 ```
 
 ### Error Display Components
