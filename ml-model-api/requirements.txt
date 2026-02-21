@@ -6,3 +6,4 @@ flask-bcrypt==1.0.1
 torch
 torchvision
 pillow
+psutil

@@ -1,6 +1,7 @@
 import os
 import uuid
 import logging
+import psutil
 from functools import wraps
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -28,6 +29,9 @@ CORS(app, origins=[os.environ.get("FRONTEND_URL", "http://localhost:3000")])
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
+
+# Global state for model status (Mocked for now)
+MODEL_LOADED = True
 
 # --- Models ---
 class User(db.Model):
@@ -135,7 +139,25 @@ def predict():
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({"status": "healthy", "auth_enabled": True, "version": "1.1.0"})
+    process = psutil.Process(os.getpid())
+    return jsonify({
+        "status": "healthy", 
+        "auth_enabled": True, 
+        "version": "1.1.0",
+        "model_loaded": MODEL_LOADED,
+        "system": {
+            "cpu_percent": psutil.cpu_percent(),
+            "memory_usage_mb": process.memory_info().rss / 1024 / 1024
+        }
+    })
+
+@app.route('/health/liveness', methods=['GET'])
+def liveness():
+    return jsonify({"status": "alive"}), 200
+
+@app.route('/health/readiness', methods=['GET'])
+def readiness():
+    return jsonify({"status": "ready" if MODEL_LOADED else "loading"}), 200 if MODEL_LOADED else 503
 
 @app.route('/classes', methods=['GET'])
 def get_classes():
