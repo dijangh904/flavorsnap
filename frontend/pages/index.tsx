@@ -10,6 +10,8 @@ import { compressImage, validateImageFile, formatFileSize } from "@/utils/imageC
 import Link from "next/link";
 import Head from "next/head";
 import Footer from "@/components/Footer";
+import Layout from "@/components/Layout";
+import Head from "next/head";
 
 export default function Classify() {
   const { t } = useTranslation("common");
@@ -166,6 +168,18 @@ export default function Classify() {
           className="sr-only"
         />
 
+    <Layout title="FlavorSnap - AI Food Classification" description="Instantly identify food with AI-powered image recognition">
+      <div className="flex flex-col items-center justify-center p-6">
+        <h1 className="text-3xl font-bold mb-6">{t("snap_your_food")} 🍛</h1>
+
+        {/* Screen reader announcements */}
+        <div
+          id="classification-announcement"
+          role="status"
+          aria-live="polite"
+          className="sr-only"
+        />
+
         <div
           id="error-announcement"
           role="alert"
@@ -277,6 +291,7 @@ export default function Classify() {
       </div>
       <Footer />
     </>
+    </Layout>
   );
 
   export const getStaticProps: GetStaticProps = async ({ locale }) => ({
