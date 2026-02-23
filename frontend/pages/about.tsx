@@ -1,14 +1,15 @@
 import { useTranslation } from "next-i18next";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import type { GetStaticProps } from "next";
-import Link from "next/link";
+import Layout from "@/components/Layout";
 import Head from "next/head";
+import Link from "next/link";
 
 export default function About() {
   const { t } = useTranslation("common");
 
   return (
-    <>
+    <Layout title="About - FlavorSnap" description="Learn about FlavorSnap - AI-powered food classification app">
       <Head>
         <title>About - FlavorSnap</title>
         <meta name="description" content="Learn about FlavorSnap - AI-powered food classification app" />
@@ -20,26 +21,32 @@ export default function About() {
         <header className="bg-white shadow-sm border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 className="text-2xl font-bold text-accent hover:text-accent/80 transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 rounded-md px-2 py-1"
                 aria-label="Go to homepage"
               >
                 FlavorSnap 🍛
               </Link>
               <nav className="flex space-x-4">
-                <Link 
-                  href="/" 
+                <Link
+                  href="/"
                   className="text-gray-600 hover:text-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 rounded-md px-3 py-2 text-sm font-medium"
                 >
                   Home
                 </Link>
-                <Link 
-                  href="/about" 
+                <Link
+                  href="/about"
                   className="text-accent font-medium focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 rounded-md px-3 py-2 text-sm"
                   aria-current="page"
                 >
                   About
+                </Link>
+                <Link
+                  href="/contact"
+                  className="text-gray-600 hover:text-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 rounded-md px-3 py-2 text-sm font-medium"
+                >
+                  Contact
                 </Link>
               </nav>
             </div>
@@ -95,7 +102,7 @@ export default function About() {
                   Get instant food recognition results in seconds, not minutes. Our optimized AI models process images quickly and accurately.
                 </p>
               </div>
-              
+
               <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
                 <div className="text-4xl mb-4">🌍</div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Global Cuisine Support</h3>
@@ -103,7 +110,7 @@ export default function About() {
                   Our AI recognizes thousands of dishes from around the world, supporting diverse culinary traditions and local specialties.
                 </p>
               </div>
-              
+
               <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
                 <div className="text-4xl mb-4">🔒</div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Privacy First</h3>
@@ -192,7 +199,7 @@ export default function About() {
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">AI Research</h3>
                   <p className="text-gray-600">Machine learning experts training the next generation of food recognition models</p>
                 </div>
-                
+
                 <div>
                   <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold">
                     UX
@@ -200,7 +207,7 @@ export default function About() {
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">Design Team</h3>
                   <p className="text-gray-600">Creating intuitive and accessible user experiences for everyone</p>
                 </div>
-                
+
                 <div>
                   <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-teal-600 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold">
                     ENG
@@ -220,7 +227,7 @@ export default function About() {
             <p className="text-xl text-gray-600 mb-8">
               Join thousands of users discovering food with AI-powered recognition
             </p>
-            <Link 
+            <Link
               href="/"
               className="inline-flex items-center bg-accent text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-accent/90 transition-colors focus:outline-none focus:ring-4 focus:ring-accent/50 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
@@ -229,17 +236,8 @@ export default function About() {
             </Link>
           </section>
         </main>
-
-        {/* Footer */}
-        <footer className="bg-gray-50 border-t border-gray-200 mt-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="text-center text-gray-600">
-              <p>&copy; 2024 FlavorSnap. Made with ❤️ for food lovers everywhere.</p>
-            </div>
-          </div>
-        </footer>
       </div>
-    </>
+    </Layout>
   );
 }
 
