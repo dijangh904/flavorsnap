@@ -6,12 +6,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { AnalyticsProvider } from "@/lib/analytics-provider";
 import { reportWebVitals } from "@/utils/performance";
+import { ThemeProvider } from "@/components/ThemeProvider"; // 1. Added this
 
 function App({ Component, pageProps }: AppProps) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 60 * 1000, // 1 minute
+        staleTime: 60 * 1000,
         refetchOnWindowFocus: false,
       },
     },
@@ -21,14 +22,15 @@ function App({ Component, pageProps }: AppProps) {
     <AnalyticsProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <Component {...pageProps} />
+          {/* 2. Wrap everything in ThemeProvider */}
+          <ThemeProvider>
+            <Component {...pageProps} />
+          </ThemeProvider>
         </QueryClientProvider>
       </ErrorBoundary>
     </AnalyticsProvider>
   );
 }
 
-// Export reportWebVitals for Next.js to use
 export { reportWebVitals };
-
 export default appWithTranslation(App);
