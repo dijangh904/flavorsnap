@@ -10,12 +10,12 @@
     "test": "jest"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.90.21",
     "i18next": "^25.8.13",
     "next": "15.3.3",
     "next-i18next": "^15.4.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
