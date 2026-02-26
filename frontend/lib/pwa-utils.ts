@@ -256,10 +256,10 @@ export class PWAManager {
     }
 
     try {
-      await this.swRegistration.sync.register(tag);
+      await (this.swRegistration.sync as any).register(tag);
       console.log(`Background sync registered: ${tag}`);
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error registering background sync:', error);
       return false;
     }
