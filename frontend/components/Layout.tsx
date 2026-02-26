@@ -1,7 +1,8 @@
 import { ReactNode, useState } from 'react';
 import Head from 'next/head';
 import { useTranslation } from 'next-i18next';
-import { useTheme } from './ThemeProvider'; 
+import { useTheme } from './ThemeProvider';
+import { OfflineIndicator } from './OfflineIndicator'; 
 
 interface LayoutProps {
   children: ReactNode;
@@ -38,6 +39,7 @@ const Layout = ({ children, title, description }: LayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      <OfflineIndicator />
       {title && (
         <Head>
           <title>{title}</title>
