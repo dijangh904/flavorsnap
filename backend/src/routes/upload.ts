@@ -1,1 +1,231 @@
-import { Router, Request, Response } from 'express';\nimport multer from 'multer';\nimport path from 'path';\nimport fs from 'fs';\nimport { ImageProcessor, ProcessedImageResult } from '../imageProcessor';\n\nconst router = Router();\n\n// Configure multer for file uploads\nconst storage = multer.diskStorage({\n  destination: (req, file, cb) => {\n    const uploadDir = path.join(process.cwd(), 'uploads', 'original');\n    \n    // Create directory if it doesn't exist\n    if (!fs.existsSync(uploadDir)) {\n      fs.mkdirSync(uploadDir, { recursive: true });\n    }\n    \n    cb(null, uploadDir);\n  },\n  filename: (req, file, cb) => {\n    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);\n    const ext = path.extname(file.originalname);\n    cb(null, `upload-${uniqueSuffix}${ext}`);\n  }\n});\n\nconst fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {\n  // Check file type\n  const allowedTypes = /jpeg|jpg|png|webp|tiff|bmp/;\n  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());\n  const mimetype = allowedTypes.test(file.mimetype);\n\n  if (mimetype && extname) {\n    return cb(null, true);\n  } else {\n    cb(new Error('Invalid file type. Only JPEG, PNG, WebP, TIFF, and BMP files are allowed.'));\n  }\n};\n\nconst upload = multer({\n  storage,\n  limits: {\n    fileSize: 10 * 1024 * 1024, // 10MB limit\n  },\n  fileFilter\n});\n\n// Enhanced upload endpoint with preprocessing\nrouter.post('/', upload.single('file'), async (req: Request, res: Response) => {\n  try {\n    if (!req.file) {\n      return res.status(400).json({\n        error: 'No file uploaded',\n        code: 'NO_FILE'\n      });\n    }\n\n    const file = req.file;\n    console.log(`Processing uploaded file: ${file.originalname}`);\n\n    // Validate file\n    if (!ImageProcessor.isSupportedFormat(path.extname(file.originalname).slice(1))) {\n      // Cleanup uploaded file\n      fs.unlinkSync(file.path);\n      return res.status(400).json({\n        error: 'Unsupported file format',\n        code: 'UNSUPPORTED_FORMAT',\n        supportedFormats: ['jpeg', 'jpg', 'png', 'webp', 'tiff', 'bmp']\n      });\n    }\n\n    // Process the image\n    let processedResult: ProcessedImageResult;\n    try {\n      processedResult = await ImageProcessor.processImage(file.path);\n      console.log('Image preprocessing completed successfully');\n    } catch (processingError) {\n      console.error('Image preprocessing failed:', processingError);\n      // Cleanup uploaded file\n      fs.unlinkSync(file.path);\n      return res.status(500).json({\n        error: 'Image processing failed',\n        code: 'PROCESSING_ERROR',\n        details: processingError instanceof Error ? processingError.message : 'Unknown error'\n      });\n    }\n\n    // Create thumbnail\n    let thumbnailPath: string | null = null;\n    try {\n      thumbnailPath = await ImageProcessor.createThumbnail(processedResult.processedPath);\n      console.log('Thumbnail created successfully');\n    } catch (thumbnailError) {\n      console.warn('Thumbnail creation failed:', thumbnailError);\n      // Continue without thumbnail\n    }\n\n    // Generate URLs\n    const baseUrl = `${req.protocol}://${req.get('host')}`;\n    const imageUrl = `${baseUrl}/uploads/processed/${path.basename(processedResult.processedPath)}`;\n    const thumbnailUrl = thumbnailPath ? `${baseUrl}/uploads/thumbnails/${path.basename(thumbnailPath)}` : null;\n\n    // Mock classification result (replace with actual ML model call)\n    const classificationResult = await mockClassification(processedResult.processedPath);\n\n    // Return enhanced response\n    const response = {\n      success: true,\n      classification: classificationResult,\n      image: {\n        original: {\n          filename: file.originalname,\n          size: file.size,\n          mimetype: file.mimetype,\n          url: `${baseUrl}/uploads/original/${file.filename}`\n        },\n        processed: {\n          filename: path.basename(processedResult.processedPath),\n          size: processedResult.metadata.size,\n          width: processedResult.metadata.width,\n          height: processedResult.metadata.height,\n          format: processedResult.metadata.format,\n          url: imageUrl\n        },\n        thumbnail: thumbnailUrl ? {\n          filename: path.basename(thumbnailPath),\n          url: thumbnailUrl\n        } : null\n      },\n      preprocessing: {\n        applied: processedResult.preprocessing,\n        improvements: getImprovementSummary(processedResult.preprocessing)\n      },\n      metadata: {\n        processingTime: Date.now() - parseInt(file.filename.split('-')[1]),\n        originalSize: file.size,\n        processedSize: processedResult.metadata.size,\n        compressionRatio: file.size > 0 ? (processedResult.metadata.size / file.size).toFixed(2) : '0'\n      }\n    };\n\n    // Cleanup temporary files\n    setTimeout(() => {\n      ImageProcessor.cleanupTempFiles([file.path]);\n    }, 5000); // Cleanup after 5 seconds\n\n    res.json(response);\n\n  } catch (error) {\n    console.error('Upload endpoint error:', error);\n    \n    // Cleanup on error\n    if (req.file && fs.existsSync(req.file.path)) {\n      fs.unlinkSync(req.file.path);\n    }\n    \n    res.status(500).json({\n      error: 'Internal server error',\n      code: 'INTERNAL_ERROR',\n      details: error instanceof Error ? error.message : 'Unknown error'\n    });\n  }\n});\n\n// Mock classification function (replace with actual ML model)\nasync function mockClassification(imagePath: string): Promise<any> {\n  // This would normally call your ML model\n  // For now, return a mock result\n  const foods = [\n    'Pizza Margherita',\n    'Caesar Salad', \n    'Grilled Chicken',\n    'Sushi Roll',\n    'Pasta Carbonara',\n    'Beef Burger',\n    'Greek Salad',\n    'Fish Tacos'\n  ];\n  \n  const randomFood = foods[Math.floor(Math.random() * foods.length)];\n  const confidence = 0.75 + Math.random() * 0.24; // 75-99%\n  \n  return {\n    label: randomFood,\n    confidence: Math.round(confidence * 100) / 100,\n    calories: Math.floor(Math.random() * 800) + 100, // 100-900 calories\n    protein: Math.floor(Math.random() * 40) + 5, // 5-45g protein\n    carbs: Math.floor(Math.random() * 60) + 10, // 10-70g carbs\n    fat: Math.floor(Math.random() * 30) + 2, // 2-32g fat\n    fiber: Math.floor(Math.random() * 15) + 1, // 1-16g fiber\n    timestamp: new Date().toISOString()\n  };\n}\n\nfunction getImprovementSummary(preprocessing: any): string[] {\n  const improvements: string[] = [];\n  \n  if (preprocessing.rotationApplied !== 0) {\n    improvements.push(`Auto-rotated ${preprocessing.rotationApplied}°`);\n  }\n  \n  if (preprocessing.resized) {\n    improvements.push('Resized for optimal processing');\n  }\n  \n  if (preprocessing.noiseReduction) {\n    improvements.push('Noise reduction applied');\n  }\n  \n  if (preprocessing.contrastEnhanced) {\n    improvements.push('Contrast enhanced');\n  }\n  \n  if (preprocessing.brightnessAdjusted) {\n    improvements.push('Brightness adjusted');\n  }\n  \n  if (preprocessing.sharpeningApplied) {\n    improvements.push('Image sharpened');\n  }\n  \n  if (preprocessing.formatConverted) {\n    improvements.push('Optimized format conversion');\n  }\n  \n  return improvements;\n}\n\nexport default router;
+import { Router, Request, Response } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { ImageProcessor, ProcessedImageResult } from '../imageProcessor';
+
+const router = Router();
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), 'uploads', 'original');
+    
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `upload-${uniqueSuffix}${ext}`);
+  }
+});
+
+const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  // Check file type
+  const allowedTypes = /jpeg|jpg|png|webp|tiff|bmp/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype);
+
+  if (mimetype && extname) {
+    return cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only JPEG, PNG, WebP, TIFF, and BMP files are allowed.'));
+  }
+};
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter
+});
+
+// Enhanced upload endpoint with preprocessing
+router.post('/', upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'No file uploaded',
+        code: 'NO_FILE'
+      });
+    }
+
+    const file = req.file;
+    console.log(`Processing uploaded file: ${file.originalname}`);
+
+    // Validate file
+    const fileExt = path.extname(file.originalname).slice(1);
+    if (!ImageProcessor.isSupportedFormat(fileExt)) {
+      // Cleanup uploaded file
+      fs.unlinkSync(file.path);
+      return res.status(400).json({
+        error: 'Unsupported file format',
+        code: 'UNSUPPORTED_FORMAT',
+        supportedFormats: ['jpeg', 'jpg', 'png', 'webp', 'tiff', 'bmp']
+      });
+    }
+
+    // Process the image
+    let processedResult: ProcessedImageResult;
+    try {
+      processedResult = await ImageProcessor.processImage(file.path);
+      console.log('Image preprocessing completed successfully');
+    } catch (processingError) {
+      console.error('Image preprocessing failed:', processingError);
+      // Cleanup uploaded file
+      fs.unlinkSync(file.path);
+      return res.status(500).json({
+        error: 'Image processing failed',
+        code: 'PROCESSING_ERROR',
+        details: processingError instanceof Error ? processingError.message : 'Unknown error'
+      });
+    }
+
+    // Create thumbnail
+    let thumbnailPath: string | null = null;
+    try {
+      thumbnailPath = await ImageProcessor.createThumbnail(processedResult.processedPath);
+      console.log('Thumbnail created successfully');
+    } catch (thumbnailError) {
+      console.warn('Thumbnail creation failed:', thumbnailError);
+      // Continue without thumbnail
+    }
+
+    // Generate URLs
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const imageUrl = `${baseUrl}/uploads/processed/${path.basename(processedResult.processedPath)}`;
+    const thumbnailUrl = thumbnailPath ? `${baseUrl}/uploads/thumbnails/${path.basename(thumbnailPath)}` : null;
+
+    // Mock classification result (replace with actual ML model call)
+    const classificationResult = await mockClassification(processedResult.processedPath);
+
+    // Return enhanced response
+    const response = {
+      success: true,
+      classification: classificationResult,
+      image: {
+        original: {
+          filename: file.originalname,
+          size: file.size,
+          mimetype: file.mimetype,
+          url: `${baseUrl}/uploads/original/${file.filename}`
+        },
+        processed: {
+          filename: path.basename(processedResult.processedPath),
+          size: processedResult.metadata.size,
+          width: processedResult.metadata.width,
+          height: processedResult.metadata.height,
+          format: processedResult.metadata.format,
+          url: imageUrl
+        },
+        thumbnail: thumbnailUrl ? {
+          filename: thumbnailPath ? path.basename(thumbnailPath) : '',
+          url: thumbnailUrl
+        } : null
+      },
+      preprocessing: {
+        applied: processedResult.preprocessing,
+        improvements: getImprovementSummary(processedResult.preprocessing)
+      },
+      metadata: {
+        processingTime: file.filename ? Date.now() - parseInt(file.filename.split('-')[1]) : 0,
+        originalSize: file.size,
+        processedSize: processedResult.metadata.size,
+        compressionRatio: file.size > 0 ? (processedResult.metadata.size / file.size).toFixed(2) : '0'
+      }
+    };
+
+    // Cleanup temporary files
+    setTimeout(() => {
+      ImageProcessor.cleanupTempFiles([file.path]);
+    }, 5000); // Cleanup after 5 seconds
+
+    res.json(response);
+
+  } catch (error) {
+    console.error('Upload endpoint error:', error);
+    
+    // Cleanup on error
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    res.status(500).json({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Mock classification function (replace with actual ML model)
+async function mockClassification(imagePath: string): Promise<any> {
+  // This would normally call your ML model
+  // For now, return a mock result
+  const foods = [
+    'Pizza Margherita',
+    'Caesar Salad', 
+    'Grilled Chicken',
+    'Sushi Roll',
+    'Pasta Carbonara',
+    'Beef Burger',
+    'Greek Salad',
+    'Fish Tacos'
+  ];
+  
+  const randomFood = foods[Math.floor(Math.random() * foods.length)];
+  const confidence = 0.75 + Math.random() * 0.24; // 75-99%
+  
+  return {
+    label: randomFood,
+    confidence: Math.round(confidence * 100) / 100,
+    calories: Math.floor(Math.random() * 800) + 100, // 100-900 calories
+    protein: Math.floor(Math.random() * 40) + 5, // 5-45g protein
+    carbs: Math.floor(Math.random() * 60) + 10, // 10-70g carbs
+    fat: Math.floor(Math.random() * 30) + 2, // 2-32g fat
+    fiber: Math.floor(Math.random() * 15) + 1, // 1-16g fiber
+    timestamp: new Date().toISOString()
+  };
+}
+
+function getImprovementSummary(preprocessing: any): string[] {
+  const improvements: string[] = [];
+  
+  if (preprocessing.rotationApplied !== 0) {
+    improvements.push(`Auto-rotated ${preprocessing.rotationApplied}°`);
+  }
+  
+  if (preprocessing.resized) {
+    improvements.push('Resized for optimal processing');
+  }
+  
+  if (preprocessing.noiseReduction) {
+    improvements.push('Noise reduction applied');
+  }
+  
+  if (preprocessing.contrastEnhanced) {
+    improvements.push('Contrast enhanced');
+  }
+  
+  if (preprocessing.brightnessAdjusted) {
+    improvements.push('Brightness adjusted');
+  }
+  
+  if (preprocessing.sharpeningApplied) {
+    improvements.push('Image sharpened');
+  }
+  
+  if (preprocessing.formatConverted) {
+    improvements.push('Optimized format conversion');
+  }
+  
+  return improvements;
+}
+
+export default router;

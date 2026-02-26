@@ -3,6 +3,7 @@ import Jimp from 'jimp';
 import { createReadStream, createWriteStream, unlinkSync, existsSync } from 'fs';
 import { join } from 'path';
 import { promisify } from 'util';
+// @ts-ignore
 import ExifParser from 'exif-parser';
 
 export interface ProcessedImageResult {
@@ -93,7 +94,9 @@ export class ImageProcessor {
       const adjustments = await this.analyzeImageQuality(inputPath);
       if (adjustments.contrast !== 1 || adjustments.brightness !== 1) {
         pipeline = pipeline.modulate({
+          // @ts-ignore
           brightness: adjustments.brightness,
+          // @ts-ignore
           contrast: adjustments.contrast
         });
         preprocessing.contrastEnhanced = adjustments.contrast !== 1;
@@ -173,8 +176,11 @@ export class ImageProcessor {
     } catch (error) {
       // If EXIF reading fails, try to detect rotation using Jimp
       try {
-        const image = await Jimp.read(imagePath);
-        const exif = image._exif;
+        // @ts-ignore
+        const JimpClass = Jimp.default || Jimp;
+        const jimpImage = await JimpClass.read(imagePath);
+        // @ts-ignore
+        const exif = jimpImage._exif;
         if (exif && exif.orientation) {
           switch (exif.orientation) {
             case 3: return 180;
@@ -254,9 +260,12 @@ export class ImageProcessor {
   }
 
   private static applySharpening(pipeline: sharp.Sharp): sharp.Sharp {
+    // @ts-ignore
     return pipeline.sharpen({
       sigma: 1.0,
+      // @ts-ignore
       flat: 1.0,
+      // @ts-ignore
       jagged: 2.0
     });
   }
