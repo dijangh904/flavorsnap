@@ -91,6 +91,7 @@ const Layout = ({ children, title, description }: LayoutProps) => {
               <span className="text-2xl font-bold text-accent">FlavorSnap 🍛</span>
               <nav className="flex space-x-4">
                 <a href="/" className="text-accent font-medium px-3 py-2 text-sm">Home</a>
+                <a href="/blockchain" className="hover:text-accent px-3 py-2 text-sm font-medium transition-colors">Blockchain</a>
                 <a href="/about" className="hover:text-accent px-3 py-2 text-sm font-medium transition-colors">About</a>
                 <a href="/contact" className="hover:text-accent px-3 py-2 text-sm font-medium transition-colors">Contact</a>
               </nav>
