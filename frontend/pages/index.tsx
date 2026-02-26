@@ -7,26 +7,34 @@ import { useTranslation } from "next-i18next";
 import { serverSideTranslations } from "next-i18next/serverSideTranslations";
 import type { GetStaticProps } from "next";
 import Layout from "@/components/Layout";
+import { errorHandler, ErrorType, ErrorInfo } from '@/lib/error-handler';
 
 export default function Classify() {
   const { t } = useTranslation("common");
   const [image, setImage] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorInfo | null>(null);
   const [classification, setClassification] = useState<any>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const handleImageSelect = (selectedFile: File, imageUrl: string) => {
     setError(null);
     setClassification(null);
     setFile(selectedFile);
     setImage(imageUrl);
+    setRetryCount(0);
   };
 
   const handleClassify = async () => {
     if (!file) return;
+    
     setLoading(true);
     setError(null);
+
+    // Register retry callback
+    const operationId = `classify-${Date.now()}`;
+    errorHandler.registerRetryCallback(operationId, () => handleClassify());
 
     try {
       const formData = new FormData();
@@ -37,15 +45,40 @@ export default function Classify() {
         body: formData,
       });
 
-      if (!response.ok) throw new Error("Classification failed");
-
       const result = await response.json();
+      
+      if (!response.ok) {
+        const errorInfo = errorHandler.handleApiResponse(response, result);
+        if (errorInfo) {
+          setError(errorInfo);
+          return;
+        }
+      }
+
       setClassification(result);
+      setRetryCount(0);
     } catch (err: any) {
-      setError(err.message);
+      const errorInfo = errorHandler.handleNetworkError(err);
+      setError(errorInfo);
     } finally {
       setLoading(false);
+      errorHandler.unregisterRetryCallback(operationId);
     }
+  };
+
+  const handleRetry = async () => {
+    if (retryCount >= (error?.maxRetries || 3)) {
+      // Max retries reached, show different message
+      return;
+    }
+    
+    setRetryCount(prev => prev + 1);
+    await handleClassify();
+  };
+
+  const handleDismiss = () => {
+    setError(null);
+    setRetryCount(0);
   };
 
   return (
@@ -71,9 +104,10 @@ export default function Classify() {
 
         {error && (
           <ErrorMessage
-            message={error}
-            onRetry={handleClassify}
-            onDismiss={() => setError(null)}
+            message={error.userMessage}
+            onRetry={error.retryable ? handleRetry : undefined}
+            onDismiss={handleDismiss}
+            variant="inline"
           />
         )}
 
