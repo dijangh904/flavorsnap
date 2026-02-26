@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import Head from 'next/head';
 import { useTranslation } from 'next-i18next';
 import { useTheme } from './ThemeProvider'; 
 
@@ -8,7 +9,7 @@ interface LayoutProps {
   description?: string;
 }
 
-const Layout = ({ children }: LayoutProps) => {
+const Layout = ({ children, title, description }: LayoutProps) => {
   const { t } = useTranslation('common');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
@@ -36,8 +37,13 @@ const Layout = ({ children }: LayoutProps) => {
   );
 
   return (
-    /* Use bg-background instead of bg-gray-50 to link to our CSS variable */
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      {title && (
+        <Head>
+          <title>{title}</title>
+          {description && <meta name="description" content={description} />}
+        </Head>
+      )}
       
       {/* Mobile Header */}
       <header className="lg:hidden bg-background border-b border-muted z-50 transition-colors">
